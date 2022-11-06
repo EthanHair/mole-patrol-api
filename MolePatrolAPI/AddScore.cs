@@ -7,6 +7,9 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Azure.Storage.Blobs;
+using Azure.Identity;
+using System.Collections.Generic;
 
 namespace MolePatrolAPI
 {
@@ -48,7 +51,7 @@ namespace MolePatrolAPI
                 log.LogError("Error: Mode cannot be null or whitespace");
                 return new BadRequestObjectResult("Error: Mode cannot be null or whitespace");
             }
-            if (score <= 0)
+            if (score < 0)
             {
                 log.LogError("Error: Score cannot be zero or negative");
                 return new BadRequestObjectResult("Error: Score cannot be zero or negative");
@@ -56,7 +59,44 @@ namespace MolePatrolAPI
 
             log.LogInformation("Successfully retrieved and validated the information. Storing the score...");
 
-            //accessing csv and storing the score
+            // Connecting to blob storage
+            log.LogInformation("Attempting to connect to blob storage");
+            BlobContainerClient containerClient;
+            try
+            {
+                // This commented area is for when it is deployed. Hopefully it works
+                //var blobServiceClient = new BlobServiceClient(
+                //                        new Uri("https://molepatrolblobstorage.blob.core.windows.net"),
+                //                        new DefaultAzureCredential());
+                string connectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING");
+
+                var blobServiceClient = new BlobServiceClient(connectionString);
+
+                string containerName = "molepatrolapiscores";
+
+                containerClient = blobServiceClient.GetBlobContainerClient(containerName);
+            }
+            catch(Exception ex) 
+            {
+                log.LogError($"Error: {ex.Message}");
+                return new BadRequestObjectResult($"Error: {ex.Message}");
+            }
+            log.LogInformation("Successfully connected to blob storage");
+
+            // Create a local file in the ./data/ directory for uploading and downloading
+            string localPath = "data";
+            Directory.CreateDirectory(localPath);
+            string fileName = "scorefile.csv";
+            string localFilePath = Path.Combine(localPath, fileName);
+
+            await File.AppendAllLinesAsync(localFilePath, new List<string>() { $"{name},{score},{mode}" });
+
+            BlobClient blobClient = containerClient.GetBlobClient(fileName);
+
+            log.LogInformation("Uploading to Blob storage as blob:\n\t {0}\n", blobClient.Uri);
+
+            // Upload data from the local file
+            await blobClient.UploadAsync(localFilePath, true);
 
             string responseMessage = $"Successfully recorded following score: Name: {name}, Score: {score}, Mode: {mode}";
 
