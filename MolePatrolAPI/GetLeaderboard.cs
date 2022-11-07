@@ -26,6 +26,8 @@ namespace MolePatrolAPI
             log.LogInformation("Recieved a request to recieve the leaderboard");
 
             string userName = string.Empty;
+            string requestedModeString = string.Empty;
+            GameMode requestedMode = GameMode.Slow;
             List<ScoreItem> scores = new();
 
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -33,6 +35,7 @@ namespace MolePatrolAPI
             try
             {
                 userName = data?.name;
+                requestedModeString = data?.mode;
             }
             catch (Exception ex)
             {
@@ -44,6 +47,31 @@ namespace MolePatrolAPI
             {
                 log.LogError("Error: Name cannot be null");
                 return new BadRequestObjectResult("Error: Name cannot be null");
+            }
+
+            if (requestedModeString is null)
+            {
+                log.LogError("Error: Mode cannot be null");
+                return new BadRequestObjectResult("Error: Mode cannot be null");
+            }
+
+            switch (requestedModeString.ToLower())
+            {
+                case "slow":
+                    requestedMode = GameMode.Slow;
+                    break;
+                case "medium":
+                    requestedMode = GameMode.Medium;
+                    break;
+                case "fast":
+                    requestedMode = GameMode.Fast;
+                    break;
+                case "hard":
+                    requestedMode = GameMode.Hard;
+                    break;
+                default:
+                    log.LogError($"Error: Could not match the requested Mode Filter \"{requestedModeString}\" to a GameMode Type");
+                    break;
             }
 
             log.LogInformation("Successfully retrieved and validated the information. Retrieving the leaderboard");
@@ -144,6 +172,11 @@ namespace MolePatrolAPI
                     log.LogError($"Error: The line: \"{line}\" is not the correct length to convert to a ScoreItem");
                 }
             }
+
+            // Sort
+            scores = scores.Where(x => x.Mode == requestedMode)
+                           .OrderByDescending(x => x.Score)
+                           .ToList();
 
             log.LogInformation("Successfully retrieved and processed the leaderboard");
             log.LogInformation("Sending the leaderboard");
