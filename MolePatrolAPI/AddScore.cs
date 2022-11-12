@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using Azure.Storage.Blobs;
 using Azure.Identity;
 using System.Collections.Generic;
+using Azure.Storage.Blobs.Specialized;
 
 namespace MolePatrolAPI
 {
@@ -68,31 +69,35 @@ namespace MolePatrolAPI
                                         new Uri("https://molepatrolblobstorage.blob.core.windows.net"),
                                         new DefaultAzureCredential());
 
-                string containerName = "molepatrolapiscores";
-
-                containerClient = blobServiceClient.GetBlobContainerClient(containerName);
+                containerClient = blobServiceClient.GetBlobContainerClient("molepatrolapiscores");
             }
             catch(Exception ex) 
             {
                 log.LogError($"Error: {ex.Message}");
                 return new BadRequestObjectResult($"Error: {ex.Message}");
             }
+
             log.LogInformation("Successfully connected to blob storage");
 
-            // Create a local file in the ./data/ directory for uploading and downloading
-            string localPath = "data";
-            Directory.CreateDirectory(localPath);
-            string fileName = "scorefile.csv";
-            string localFilePath = Path.Combine(localPath, fileName);
+            // Getting the blob
+            AppendBlobClient appendBlobClient = containerClient.GetAppendBlobClient("scorefile.csv");
 
-            await File.AppendAllLinesAsync(localFilePath, new List<string>() { $"{name},{score},{mode}" });
+            // Appending the score
+            using Stream stream = new MemoryStream();
+            using StreamWriter streamWriter = new StreamWriter(stream);
+            streamWriter.Write($"{name},{score},{mode}\n");
+            streamWriter.Flush();
+            stream.Seek(0, SeekOrigin.Begin);
 
-            BlobClient blobClient = containerClient.GetBlobClient(fileName);
-
-            log.LogInformation("Uploading to Blob storage as blob:\n\t {0}\n", blobClient.Uri);
-
-            // Upload data from the local file
-            await blobClient.UploadAsync(localFilePath, true);
+            try
+            {
+                appendBlobClient.AppendBlock(stream);
+            }
+            catch (Exception ex)
+            {
+                log.LogError($"Error: {ex.Message}");
+                return new BadRequestObjectResult($"Error: {ex.Message}");
+            }
 
             string responseMessage = $"Successfully recorded following score: Name: {name}, Score: {score}, Mode: {mode}";
 

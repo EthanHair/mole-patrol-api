@@ -12,6 +12,7 @@ using Azure.Storage.Blobs;
 using System.Collections.Generic;
 using MolePatrolAPI.Models;
 using System.Linq;
+using Azure.Storage.Blobs.Models;
 
 namespace MolePatrolAPI
 {
@@ -105,21 +106,19 @@ namespace MolePatrolAPI
             }
             log.LogInformation("Successfully connected to blob storage");
 
-            // Create a local file in the ./score_file_location/ directory for uploading and downloading
-            string localPath = "score_file_location";
-            Directory.CreateDirectory(localPath);
             string fileName = "scorefile.csv";
-            string localFilePath = Path.Combine(localPath, fileName);
 
+            // Get Blob
             BlobClient blobClient = containerClient.GetBlobClient(fileName);
 
-            log.LogInformation("Downloading blob to\n\t{0}\n", blobClient.Uri);
-
-            // Download file to the local folder
-            await blobClient.DownloadToAsync(localFilePath);
-
             // Reading the csv file
-            string[] lines = await File.ReadAllLinesAsync(localFilePath);
+            BlobDownloadResult downloadResult = await blobClient.DownloadContentAsync();
+            string downloadedData = downloadResult.Content.ToString();
+
+            log.LogInformation("Successfully downloaded the file to a string");
+
+            // Proccessing the scores
+            string[] lines = downloadedData.Split("\n").SkipLast(1).ToArray();
 
             foreach (string line in lines)
             {
