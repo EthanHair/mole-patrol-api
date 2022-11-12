@@ -90,13 +90,9 @@ namespace MolePatrolAPI
             BlobContainerClient containerClient;
             try
             {
-                // This commented area is for when it is deployed. Hopefully it works
-                //var blobServiceClient = new BlobServiceClient(
-                //                        new Uri("https://molepatrolblobstorage.blob.core.windows.net"),
-                //                        new DefaultAzureCredential());
-                string connectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING");
-
-                var blobServiceClient = new BlobServiceClient(connectionString);
+                var blobServiceClient = new BlobServiceClient(
+                                        new Uri("https://molepatrolblobstorage.blob.core.windows.net"),
+                                        new DefaultAzureCredential());
 
                 string containerName = "molepatrolapiscores";
 
