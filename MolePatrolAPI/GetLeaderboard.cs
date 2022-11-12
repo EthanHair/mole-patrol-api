@@ -105,8 +105,8 @@ namespace MolePatrolAPI
             }
             log.LogInformation("Successfully connected to blob storage");
 
-            // Create a local file in the ./data/ directory for uploading and downloading
-            string localPath = "data";
+            // Create a local file in the ./score_file_location/ directory for uploading and downloading
+            string localPath = "score_file_location";
             Directory.CreateDirectory(localPath);
             string fileName = "scorefile.csv";
             string localFilePath = Path.Combine(localPath, fileName);
@@ -115,7 +115,7 @@ namespace MolePatrolAPI
 
             log.LogInformation("Downloading blob to\n\t{0}\n", blobClient.Uri);
 
-            // Upload data from the local file
+            // Download file to the local folder
             await blobClient.DownloadToAsync(localFilePath);
 
             // Reading the csv file
