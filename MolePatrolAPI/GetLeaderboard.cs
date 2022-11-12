@@ -27,32 +27,41 @@ namespace MolePatrolAPI
 
             string userName = string.Empty;
             string requestedModeString = string.Empty;
+            int requestedNumber = 0;
             GameMode requestedMode = GameMode.Slow;
             List<ScoreItem> scores = new();
 
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             dynamic data = JsonConvert.DeserializeObject(requestBody);
-            try
-            {
-                userName = data?.name;
-                requestedModeString = data?.mode;
-            }
-            catch (Exception ex)
-            {
-                log.LogError($"Error: {ex.Message}");
-                return new BadRequestObjectResult($"Error: {ex.Message}");
-            }
 
-            if (userName is null)
+            if (data?.name is null)
             {
                 log.LogError("Error: Name cannot be null");
                 return new BadRequestObjectResult("Error: Name cannot be null");
             }
 
-            if (requestedModeString is null)
+            if (data?.mode is null)
             {
                 log.LogError("Error: Mode cannot be null");
                 return new BadRequestObjectResult("Error: Mode cannot be null");
+            }
+
+            if (data?.number is null)
+            {
+                log.LogError("Error: Number cannot be null");
+                return new BadRequestObjectResult("Error: Number cannot be null");
+            }
+                
+            try
+            {
+                userName = data?.name;
+                requestedModeString = data?.mode;
+                requestedNumber = data?.number;
+            }
+            catch (Exception ex)
+            {
+                log.LogError($"Error: {ex.Message}");
+                return new BadRequestObjectResult($"Error: {ex.Message}");
             }
 
             switch (requestedModeString.ToLower())
@@ -176,6 +185,7 @@ namespace MolePatrolAPI
             // Sort
             scores = scores.Where(x => x.Mode == requestedMode)
                            .OrderByDescending(x => x.Score)
+                           .Take(requestedNumber)
                            .ToList();
 
             log.LogInformation("Successfully retrieved and processed the leaderboard");
